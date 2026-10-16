@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>loading</title>
+<!-- HFTC campus world with a dragon. Built by ../build/build.py from ../../site/site.json and the floor plans. -->
+<style>
+  html, body { margin: 0; height: 100%; background: #9fd0ea; overflow: hidden; -webkit-user-select: none; user-select: none; }
+  canvas { display: block; width: 100vw; height: 100vh; touch-action: none; }
+  .hud { position: fixed; pointer-events: none; font-family: "Arial Black", "Helvetica Neue", Arial, sans-serif; font-weight: 900;
+    color: #fff3c4; text-shadow: 0 0 2px #7a2c00, 2px 2px 0 #7a2c00, -1px -1px 0 #7a2c00, 1px -1px 0 #7a2c00, -1px 1px 0 #7a2c00; }
+  #gems { top: max(14px, env(safe-area-inset-top)); left: 16px; font-size: 26px; display: flex; align-items: center; gap: 10px;
+    opacity: 0; transform: translateY(-8px); transition: opacity .35s, transform .35s; }
+  #gems.show { opacity: 1; transform: none; }
+  #gems i { width: 22px; height: 22px; background: linear-gradient(135deg, #ff6b6b, #c40e2a); clip-path: polygon(50% 0, 100% 38%, 50% 100%, 0 38%);
+    display: inline-block; filter: drop-shadow(1px 1px 0 #7a2c00); }
+  #banner { top: 18%; left: 0; right: 0; text-align: center; opacity: 0; transition: opacity .6s; }
+  #banner.show { opacity: 1; }
+  #bname { font-size: clamp(20px, 4.2vw, 40px); letter-spacing: 1px; }
+  #bsub { font: 700 clamp(12px, 1.8vw, 16px) system-ui, sans-serif; color: #fff; text-shadow: 1px 1px 2px #000a; margin-top: 6px; }
+  #mode { bottom: max(16px, env(safe-area-inset-bottom)); right: 18px; font-size: 18px; letter-spacing: 2px; }
+  #helpbtn { position: fixed; top: max(12px, env(safe-area-inset-top)); right: 12px; z-index: 5; font: 800 14px system-ui, sans-serif;
+    color: #fff3c4; background: #c4521acc; border: 2px solid #ffd27a; border-radius: 18px; padding: 6px 12px; cursor: pointer; }
+  #help { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: #0008; z-index: 10; }
+  #help.show { display: flex; }
+  #help .card { background: #fff7e2; color: #3a1a10; border: 4px solid #f27a1a; border-radius: 14px; padding: 18px 22px; max-width: 640px;
+    max-height: 86vh; overflow: auto; font: 14px/1.45 system-ui, sans-serif; box-shadow: 0 8px 30px #0006; }
+  #help h2 { margin: 0 0 8px; font-family: "Arial Black", sans-serif; color: #c4521a; }
+  #help table { border-collapse: collapse; width: 100%; }
+  #help td { padding: 3px 8px; border-bottom: 1px solid #f0d9a8; vertical-align: top; }
+  #help td:first-child { font-weight: 700; white-space: nowrap; }
+  #help kbd { background: #3a1a10; color: #fff3c4; border-radius: 4px; padding: 0 5px; font: 12px ui-monospace, monospace; }
+  #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; font: 900 22px "Arial Black", sans-serif;
+    color: #fff3c4; text-shadow: 2px 2px 0 #7a2c00; background: linear-gradient(#3d7fd6, #bfe3f5); }
+  /* touch controls */
+  #touch { display: none; }
+  body.touch #touch { display: block; }
+  #stickzone { position: fixed; left: 0; bottom: 0; width: 45vw; height: 60vh; touch-action: none; }
+  #stickbase { position: fixed; left: 40px; bottom: 60px; width: 120px; height: 120px; border-radius: 50%; background: #ffffff22;
+    border: 2px solid #ffffff66; opacity: .35; pointer-events: none; }
+  body.touch #stickbase { top: auto; }
+  #knob { position: absolute; left: 35px; top: 35px; width: 50px; height: 50px; border-radius: 50%; background: #fff3c4aa; border: 2px solid #c4521a; }
+  .pad { position: fixed; right: 18px; bottom: max(18px, env(safe-area-inset-bottom)); width: 190px; height: 190px; }
+  .pad b, .shoulder b, .sel { position: absolute; width: 60px; height: 60px; border-radius: 50%; background: #1b1b2acc; border: 2px solid #ffffff55;
+    display: flex; align-items: center; justify-content: center; font: 900 24px system-ui, sans-serif; touch-action: none; }
+  .pad b.on, .shoulder b.on, .sel.on { background: #c4521acc; }
+  .pad [data-btn=triangle] { left: 65px; top: 0; color: #4fd6b0; }
+  .pad [data-btn=square] { left: 0; top: 65px; color: #ff8ad8; }
+  .pad [data-btn=circle] { right: 0; top: 65px; color: #ff5a5a; }
+  .pad [data-btn=cross] { left: 65px; bottom: 0; color: #8ab4ff; }
+  .shoulder { position: fixed; right: 18px; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 205px); width: 190px; height: 50px; }
+  .shoulder b { width: 42px; height: 34px; border-radius: 10px; font-size: 13px; color: #fff3c4; }
+  .shoulder [data-btn=l2] { left: 0; } .shoulder [data-btn=l1] { left: 47px; } .shoulder [data-btn=r1] { left: 101px; } .shoulder [data-btn=r2] { left: 148px; }
+  .sel { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(14px, env(safe-area-inset-bottom)); width: 84px; height: 34px; border-radius: 17px;
+    font-size: 13px; color: #fff3c4; }
+</style>
+<script type="importmap">
+  { "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/addons/" } }
+</script>
+</head>
+<body>
+<div id="loading">HFTC · loading the training center…</div>
+<div id="gems" class="hud"><i></i><span id="gemn">0</span></div>
+<div id="banner" class="hud"><div id="bname"></div><div id="bsub"></div></div>
+<div id="mode" class="hud"></div>
+<button id="helpbtn">? controls</button>
+<div id="help"><div class="card">
+  <h2>Controls</h2>
+  <table>
+    <tr><td>Run</td><td>left stick / d-pad · <kbd>WASD</kbd> or arrows · touch: drag on the left</td></tr>
+    <tr><td>✕ Jump</td><td>✕ · <kbd>Space</kbd> or <kbd>K</kbd></td></tr>
+    <tr><td>✕ in the air: Glide</td><td>steer with the stick; you sink slowly and can't stop</td></tr>
+    <tr><td>✕ while gliding: Hover</td><td>a short flapping lift at the end of a glide</td></tr>
+    <tr><td>□ Charge</td><td>hold □ · <kbd>Shift</kbd> or <kbd>J</kbd>: run horns-first; jump from a charge to go further</td></tr>
+    <tr><td>○ Flame</td><td>○ · <kbd>F</kbd> or <kbd>L</kbd></td></tr>
+    <tr><td>△ in the air: Headbash</td><td>△ · <kbd>R</kbd> or <kbd>I</kbd>: drop straight down (also stops a glide)</td></tr>
+    <tr><td>△ standing: Look</td><td>hold △ and use the stick to look around in first person</td></tr>
+    <tr><td>L1 / R1 Camera</td><td><kbd>Q</kbd> / <kbd>E</kbd> rotate the camera; both at once put it behind you</td></tr>
+    <tr><td>L2 / R2 Roll</td><td><kbd>Z</kbd> / <kbd>C</kbd>: sidestep roll (barrel roll in flight)</td></tr>
+    <tr><td>Select Flight</td><td><kbd>V</kbd> or <kbd>Tab</kbd>: free flight on and off. Stick up dives, down climbs; hold ✕ to speed up, □ to slow down</td></tr>
+    <tr><td>Start</td><td><kbd>Enter</kbd> / <kbd>Esc</kbd> / <kbd>H</kbd>: this card</td></tr>
+  </table>
+  <p>Gems sit on every roof and along the roads; get close and they fly to you. A gamepad works too (standard layout). Tap anywhere to close.</p>
+</div></div>
+<div id="touch">
+  <div id="stickzone"></div>
+  <div id="stickbase"><div id="knob"></div></div>
+  <div class="shoulder"><b data-btn="l2">L2</b><b data-btn="l1">L1</b><b data-btn="r1">R1</b><b data-btn="r2">R2</b></div>
+  <div class="pad"><b data-btn="triangle">△</b><b data-btn="square">□</b><b data-btn="circle">○</b><b data-btn="cross">✕</b></div>
+  <b class="sel" data-btn="select">FLY</b>
+</div>
+<script type="module" src="main.js"></script>
+<script>
+  if (location.protocol === 'file:') document.body.innerHTML =
+    '<p style="font:16px system-ui;padding:24px;line-height:1.5">This page has to be served, not opened as a file. ' +
+    'See world/README.md for the serve command.</p>';
+</script>
+</body>
+</html>
